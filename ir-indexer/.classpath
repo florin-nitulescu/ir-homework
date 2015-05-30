@@ -2,7 +2,8 @@
 <classpath>
 	<classpathentry exported="true" kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry kind="src" path="src"/>
-	<classpathentry kind="lib" path="C:/Users/radu/workspace/lucene-5.1.0/core/lucene-core-5.1.0.jar"/>
-	<classpathentry kind="lib" path="C:/Users/radu/workspace/lucene-5.1.0/analysis/common/lucene-analyzers-common-5.1.0.jar"/>
+	<classpathentry kind="lib" path="C:/Users/radu/workspace/lucene-4.10.4/analysis/common/lucene-analyzers-common-4.10.4.jar"/>
+	<classpathentry kind="lib" path="C:/Users/radu/workspace/lucene-4.10.4/core/lucene-core-4.10.4.jar"/>
+	<classpathentry kind="lib" path="C:/Users/radu/workspace/lucene-4.10.4/suggest/lucene-suggest-4.10.4.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
