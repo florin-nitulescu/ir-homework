@@ -4,6 +4,7 @@ import java.io.InputStreamReader;
 import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.Vector;
 
@@ -13,10 +14,13 @@ import org.apache.lucene.analysis.ro.RomanianAnalyzer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.DocsEnum;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.MultiFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.queryparser.classic.ParseException;
 import org.apache.lucene.queryparser.classic.QueryParser;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.PhraseQuery;
 import org.apache.lucene.search.Query;
@@ -32,6 +36,7 @@ public class IRSearch {
 	static private class QuerySuggester extends QueryParser {
 		private boolean suggestedQuery = false;
 		private Directory spellIndexDirectory = null;
+		private ArrayList<Term> _QueryTerms;
 		
 		public QuerySuggester(String field, Analyzer analyzer, Directory spellIndexDirectory) {
 			super(field, analyzer);
@@ -47,6 +52,7 @@ public class IRSearch {
 			StringReader stringReader = new StringReader(queryText);
 		    TokenStream tokenStream;
 			Vector<String> v = new Vector<String>();
+			_QueryTerms = new ArrayList<Term>();
 			try {
 				tokenStream = getAnalyzer().tokenStream(field, stringReader);
 			    CharTermAttribute termAttribute = tokenStream.addAttribute(CharTermAttribute.class);
@@ -68,13 +74,17 @@ public class IRSearch {
 	
 				if (v.size() == 0)
 					return null;
-				else if (v.size() == 1)
-					return new TermQuery(getTerm(field, v.elementAt(0)));
-				else {
+				else if (v.size() == 1) {
+					Term term = getTerm(field, v.elementAt(0));
+					_QueryTerms.add(term);
+					return new TermQuery(term);
+				} else {
 					PhraseQuery q = new PhraseQuery();
 					q.setSlop(getPhraseSlop());
 					for (int i = 0; i < v.size(); i++) {
-						q.add(getTerm(field, v.elementAt(i)));
+						Term term = getTerm(field, v.elementAt(0));
+						_QueryTerms.add(term);
+						q.add(term);
 					}
 					return q;
 				}
@@ -83,6 +93,10 @@ public class IRSearch {
 			}
 		}
 
+		
+		public ArrayList<Term> getQueryTerms() {
+			return _QueryTerms;
+		}
 
 
 		private Term getTerm(String field, String queryText) throws ParseException, IOException {
@@ -158,9 +172,31 @@ public class IRSearch {
 			
 			System.out.println("Nr. de rezultate returnate: " + numTotalHits);
 			
+			
 			for (int i = 0; i < hits.length; i++) {
 				Document doc = searcher.doc(hits[i].doc);
 				String path = doc.get("path");
+				
+				
+				System.out.println("Explain: " + searcher.explain(query, hits[i].doc).toString());
+				
+				for (Term term : suggester.getQueryTerms()) {
+				
+					DocsEnum docsEnum = MultiFields.getTermDocsEnum(reader, MultiFields.getLiveDocs(reader), term.field(), term.bytes());
+					if (docsEnum != null) {
+						while (docsEnum.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+					    	if (docsEnum.docID() == hits[i].doc) {
+					    		double tf = (Math.log(1 + docsEnum.freq()) / Math.log(2));
+					        	System.out.println("Term freq: " + tf);
+				    		}
+				        }
+					}
+					
+					double idf = Math.log((double)reader.numDocs() / reader.docFreq(term)) / Math.log(2);
+					
+					System.out.println("Inverse doc. freq: " + idf);
+				}
+				
 				if (path != null) {
 					System.out.println((i + 1) + ". Scor: " + hits[i].score + "\n    Cale: " + path);
 					String title = doc.get("title");
