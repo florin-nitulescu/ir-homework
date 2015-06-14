@@ -2,8 +2,10 @@
 <classpath>
 	<classpathentry exported="true" kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry kind="src" path="src"/>
+	<classpathentry kind="src" path="resources"/>
 	<classpathentry kind="lib" path="C:/Users/radu/workspace/lucene-4.10.4/analysis/common/lucene-analyzers-common-4.10.4.jar"/>
 	<classpathentry kind="lib" path="C:/Users/radu/workspace/lucene-4.10.4/core/lucene-core-4.10.4.jar"/>
 	<classpathentry kind="lib" path="C:/Users/radu/workspace/lucene-4.10.4/suggest/lucene-suggest-4.10.4.jar"/>
+	<classpathentry kind="lib" path="C:/Users/radu/workspace/tika-1.8/tika-app-1.8.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

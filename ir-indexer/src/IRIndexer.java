@@ -29,6 +29,11 @@ import org.apache.lucene.search.spell.SpellChecker;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.util.Version;
+import org.apache.tika.exception.TikaException;
+import org.apache.tika.metadata.Metadata;
+import org.apache.tika.parser.AutoDetectParser;
+import org.apache.tika.sax.BodyContentHandler;
+import org.xml.sax.SAXException;
 
 
 public class IRIndexer {
@@ -52,7 +57,7 @@ public class IRIndexer {
 			System.out.println("Indexul va fi pastrat in directorul: " + indexPath.toAbsolutePath());
 			
 			dir = FSDirectory.open(indexPath.toFile());
-			Analyzer analyzer = new RomanianAnalyzer();
+			Analyzer analyzer = new IRRomanianStopwordsAnalyzer();
 			IndexWriterConfig iwc = new IndexWriterConfig(Version.LATEST, analyzer);
 			
 			iwc.setOpenMode(OpenMode.CREATE);
@@ -111,9 +116,19 @@ public class IRIndexer {
 			
 			Document doc = new Document();
 			
+			BodyContentHandler textHandler = new BodyContentHandler();
+	        Metadata metadata = new Metadata();
+	        AutoDetectParser parser = new AutoDetectParser();
+	        try {
+				parser.parse(stream, textHandler, metadata);
+			} catch (SAXException | TikaException e) {
+				// TODO Auto-generated catch block
+				// e.printStackTrace();
+			}
+			
 			Field pathField = new StringField("path", file.toString(), Field.Store.YES);
 			doc.add(pathField);
-			doc.add(new TextField("contents", new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))));
+			doc.add(new TextField("contents", textHandler.toString(), Field.Store.NO));
 			doc.add(new LongField("modified", modifiedTime, Field.Store.NO));
 			
 	        System.out.println("adding " + file);

@@ -27,6 +27,8 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.similarities.DefaultSimilarity;
+import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.search.spell.SpellChecker;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
@@ -42,6 +44,14 @@ public class IRSearch {
 			super(field, analyzer);
 			this.spellIndexDirectory = spellIndexDirectory;
 		}
+		
+		@Override 
+		public Query parse(String query) throws ParseException {
+			_QueryTerms = new ArrayList<Term>();
+			return super.parse(query);
+		}
+		
+		
 
 		@Override
 		protected Query getFieldQuery(String field, String queryText, boolean quoted)
@@ -52,7 +62,6 @@ public class IRSearch {
 			StringReader stringReader = new StringReader(queryText);
 		    TokenStream tokenStream;
 			Vector<String> v = new Vector<String>();
-			_QueryTerms = new ArrayList<Term>();
 			try {
 				tokenStream = getAnalyzer().tokenStream(field, stringReader);
 			    CharTermAttribute termAttribute = tokenStream.addAttribute(CharTermAttribute.class);
@@ -70,7 +79,7 @@ public class IRSearch {
 				
 				tokenStream.close();
 			
-				System.out.println("Termenii din query: " + String.join(", ", v));
+				//System.out.println("Termenii din query: " + String.join(", ", v));
 	
 				if (v.size() == 0)
 					return null;
@@ -129,7 +138,7 @@ public class IRSearch {
 		
 		IndexReader reader = DirectoryReader.open(FSDirectory.open(Paths.get(indexPath).toFile()));
 		IndexSearcher searcher = new IndexSearcher(reader);
-		Analyzer analyzer = new RomanianAnalyzer();
+		Analyzer analyzer = new IRRomanianStopwordsAnalyzer();
 		
 		BufferedReader in = new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8));
 		
@@ -177,26 +186,6 @@ public class IRSearch {
 				Document doc = searcher.doc(hits[i].doc);
 				String path = doc.get("path");
 				
-				
-				System.out.println("Explain: " + searcher.explain(query, hits[i].doc).toString());
-				
-				for (Term term : suggester.getQueryTerms()) {
-				
-					DocsEnum docsEnum = MultiFields.getTermDocsEnum(reader, MultiFields.getLiveDocs(reader), term.field(), term.bytes());
-					if (docsEnum != null) {
-						while (docsEnum.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
-					    	if (docsEnum.docID() == hits[i].doc) {
-					    		double tf = (Math.log(1 + docsEnum.freq()) / Math.log(2));
-					        	System.out.println("Term freq: " + tf);
-				    		}
-				        }
-					}
-					
-					double idf = Math.log((double)reader.numDocs() / reader.docFreq(term)) / Math.log(2);
-					
-					System.out.println("Inverse doc. freq: " + idf);
-				}
-				
 				if (path != null) {
 					System.out.println((i + 1) + ". Scor: " + hits[i].score + "\n    Cale: " + path);
 					String title = doc.get("title");
@@ -206,10 +195,35 @@ public class IRSearch {
 				} else {
 					System.out.println((i + 1) + ". Scor: " + hits[i].score + "\n    Cale: Document fara cale");
 				}
+
+				
+				DefaultSimilarity similarity = (DefaultSimilarity)searcher.getSimilarity();
+				
+				//System.out.println("Explain: " + searcher.explain(query, hits[i].doc).toString());
+				ArrayList<Term> queryTerms = suggester.getQueryTerms();
+				
+				for (Term term : queryTerms) {
+				
+					DocsEnum docsEnum = MultiFields.getTermDocsEnum(reader, MultiFields.getLiveDocs(reader), term.field(), term.bytes());
+					if (docsEnum != null) {
+						while (docsEnum.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+					    	if (docsEnum.docID() == hits[i].doc) {			
+					    		//double tf = Math.sqrt(docsEnum.freq());
+					    		double tf = similarity.tf(docsEnum.freq());
+					        	System.out.println("    " + term.text() + " tf = " + tf);
+				    		}
+				        }
+					}
+					
+					//double idf = Math.log((double)reader.numDocs() / reader.docFreq(term)) / Math.log(2);
+					double idf = similarity.idf(reader.docFreq(term), reader.numDocs());
+					
+					System.out.println("    " + term.text() + " idf = " + idf);
+				}
 			}
 		}
 		
-		System.out.println("Gata.");
+		System.out.println("Terminat.");
 		
 	}
 
